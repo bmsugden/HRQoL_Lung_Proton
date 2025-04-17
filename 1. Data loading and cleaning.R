@@ -22,7 +22,7 @@ PatData2 <- PatData[, c(-1, -4, -5, -6, -7, -8, -9, -10, -17, -21, -22,
 
 str(PatData2) # inspect again
 
-# Clean PatData data
+# Clean Patient Data (PatData)
 PatData2$WHO_PS[PatData2$WHO_PS %in% c("2", "3")] <- "2"
 
 PatData2$Stage[PatData2$Stage %in% c("IVA", "IVB")] <- "IV"
