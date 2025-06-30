@@ -13,8 +13,6 @@ library(dplyr)# For density plots
 library(summarytools)
 library(car)
 
-
-
 # Step 1: Check baseline overlap using ggplot density plots. Matching not recommended if poor overlap. 
 ## Note// ggplot requires a dataframe (rather than a mids object produced by data imputation). 
 ## Hence, first create combined dataset with imputation modifier. Densities are plotted for each imputation using facets.
@@ -61,7 +59,7 @@ pooled_data_photons <- final_pooled_data %>%
 
 view(dfSummary(pooled_data_protons)) # pooled proton summary
 view(dfSummary(pooled_data_photons)) # pooled photon summary
-
+view(dfSummary(final_pooled_data)) # total summary
 
 
 ##Age

@@ -1,14 +1,12 @@
 rm(list = ls())
 
 # Load data from CSV file (2. Summaries and Utility calculations)
-MergedData <- read.csv("MergedData2.csv", stringsAsFactors = TRUE, check.names = FALSE, na.strings = c("", " ","NA", "<NA>", "#NUM!"))
+MergedData <- read.csv("MergedData2.csv", stringsAsFactors = TRUE, 
+                       check.names = FALSE, 
+                       na.strings = c("", " ","NA", "<NA>", "#NUM!"))
 
-# library(lme4)
-# library(Matrix)
-# library(lmerTest)
 library(summarytools)
 library(ggplot2)
-# library(MuMIn)
 library(car)
 library(summarytools)
 library(mice)
@@ -16,7 +14,6 @@ library(miceadds)
 library(PerformanceAnalytics)
 library(dplyr)
 library(ggpubr)
-
 
 str(MergedData)
 
@@ -29,9 +26,7 @@ MergedData$GTV_volume <- as.numeric(MergedData$GTV_volume)
 dfSummary(MergedData)
 
 
-sum(rowSums(is.na(MergedData)) > 0) #Number of patients with at least one missing
-#PRIOR TO ADDING ADDITIONAL NTCP VARIABLES# 418/763 # => 55 to be used as number of imputed datasets, m, in missing data imputation (i.e., proportion of patients with at least one missing variable)
-629/763 # => 82 to be used as number of imputed datasets, m, in missing data imputation (i.e., proportion of observations with at least one missing variable)
+sum(rowSums(is.na(MergedData)) > 0) #Number of obs with at least one missing (% of total used as no. imputed datasets)
 str(MergedData)
 
 #Set reference values 
@@ -95,16 +90,14 @@ consistent_vars <- c("Durvalumab", "TumorCellType", "TumorLocation", "Surgery", 
 for (var in consistent_vars) {
 predictor_matrix[var, c("Periode", "EQindex", "EQ5DVAS", "GlobalHealthStatus", "Label", "Treatment50")] <- 0  
 }
-predictor_matrix["Label", ] <- 0  # Exclude 'Label' from predicting any other variable
-predictor_matrix["WHO_PS_matching", ] <- 0  # Exclude 'WHO_PS_matching' from predicting any other variable. This is a grouped variable for matching only. 
-predictor_matrix["Treatment50", ] <- 0  # Exclude 'Treatment50' from predicting any other variable
-predictor_matrix["Treatment80", ] <- 0  # Exclude 'Treatment50' from predicting any other variable
-predictor_matrix["Treatment100", ] <- 0  # Exclude 'Treatment50' from predicting any other variable
+predictor_matrix[, "Label"] <- 0  # Exclude 'Label' from predicting any other variable
+predictor_matrix[, "WHO_PS_matching"] <- 0  # Exclude 'WHO_PS_matching' from predicting any other variable. This is a grouped variable for matching only. 
+predictor_matrix[, "Treatment50"] <- 0  # Exclude 'Treatment50' from predicting any other variable
+predictor_matrix[, "Treatment80"] <- 0  # Exclude 'Treatment80' from predicting any other variable
+predictor_matrix[, "Treatment100"] <- 0  # Exclude 'Treatment100' from predicting any other variable
 predictor_matrix[consistent_vars, "PatientID"] <- -2  # to ensure consistent imputation for variables not dependent on time
 
-####### RETROSPECTIVELY ADDING number of fractions as protons and photons 
- ###### MAYBE CHANGE LATER - if so, just add these variables to consistent_vars and remove this
-# adding number of fractions as protons and photons (Note - retrospectively adding - imputing two missings)
+# adding number of fractions as protons and photons
 numfract_consistent_vars <- c("Fractions_proton", "Fractions_photon", "Fractions_total", "TreatmentSplit")
 other_vars <- setdiff(names(MergedData), numfract_consistent_vars)
 for (var in other_vars) {
@@ -113,13 +106,9 @@ for (var in other_vars) {
 for (var in numfract_consistent_vars) {
   predictor_matrix[var, "PatientID"] <- -2
 } # ensure consistent for a given patient across timepoints
-####### END Note for adding 
-
-
-
 
 print(predictor_matrix)
-
+dfSummary(MergedData$Treatment30)
 
 ## Perform MICE imputation
 imputed_data <- mice(MergedData, method = mice_methods, predictorMatrix = predictor_matrix, m = 82, maxit = 50, seed = 123)
@@ -171,7 +160,7 @@ view(dfSummary(imputed_only_unique[, c("PatientID", "Durvalumab", "TumorCellType
                                        "Dyspnea_PHYS_BL_CTCAE")])) #Imputed values only, unique patients only
 
 
-# Exploring Durvalumab
+# Exploring Durvalumab variable (assessing imputation)
 
 Observed_Durvyes <- MergedData_unique[MergedData_unique$Durvalumab == 'yes', ]
 view(dfSummary(Observed_Durvyes))
@@ -322,7 +311,7 @@ bxp_EQindex <- ggplot(aggregated_data, aes(x = Periode, y = avg_EQindex, fill = 
   scale_fill_manual(values = c("1", "2", "3")) +
   geom_boxplot(alpha = 0.7) + 
   # Remove or update the give.n summary if not needed:
-  # stat_summary(fun.data = give.n, geom = "text", position = position_dodge(width = 0.75), size = 2, aes(y = -0.5)) +
+  stat_summary(fun.data = give.n, geom = "text", position = position_dodge(width = 0.75), size = 2, aes(y = -0.5)) +
   scale_y_continuous(name = "EQ5D5L Utility", limits = c(-0.5, 1)) +
   scale_x_discrete(name = "Time (months)") +
   labs(fill = "") +
@@ -335,6 +324,7 @@ bxp_GHS <- ggplot(aggregated_data, aes(x = Periode, y = avg_GlobalHealthStatus, 
   scale_fill_manual(values = c("1", "2", "3")) +
   geom_boxplot(alpha = 0.7) + 
   # Optionally add a stat_summary for counts or other annotations if desired:
+  stat_summary(fun.data = give.n, geom = "text", position = position_dodge(width = 0.75), size = 2, aes(y = -0.5)) +
   scale_y_continuous(name = "Global Health Status Score", limits = c(-0.5, 1)) +
   scale_x_discrete(name = "Time (months)") +
   labs(fill = "") +
@@ -346,6 +336,7 @@ bxp_GHS <- ggplot(aggregated_data, aes(x = Periode, y = avg_GlobalHealthStatus, 
 bxp_EQVAS <- ggplot(aggregated_data, aes(x = Periode, y = avg_EQVAS, fill = Treatment30)) +
   scale_fill_manual(values = c("1", "2", "3")) +
   geom_boxplot(alpha = 0.7) + 
+  stat_summary(fun.data = give.n, geom = "text", position = position_dodge(width = 0.75), size = 2, aes(y = -0.5)) +
   scale_y_continuous(name = "EQ VAS Utility", limits = c(-0.5, 1)) +
   scale_x_discrete(name = "Time (months)") +
   labs(fill = "") +
@@ -447,9 +438,7 @@ get_pooled_categorical <- function(imputed_list, var) {
   return(pooled_counts)
 }
 
-# Assuming imputed_unique_list is already defined as one-row-per-patient datasets
-# (see your previous code)
-# Create subsets for protons and photons (if not already created)
+# Create subsets for protons and photons 
 imputed_unique_list_protons <- lapply(imputed_unique_list, function(data) {
   subset(data, Treatment30 == "Protons")
 })
@@ -485,11 +474,6 @@ print(pooled_categorical_protons)
 
 cat("\nPooled Categorical Variables - Photon Patients Only:\n")
 print(pooled_categorical_photons)
-
-
-### Agregated baseline characteristcs across imputed datasets
-
-
 
 
 # Save imputed data object

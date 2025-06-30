@@ -43,7 +43,7 @@ MergedData$Treatment100 <- ifelse(
          ifelse(MergedData$Label == "Photons (PV)", "Photons", NA))
 )
 
-# Create variable that splits patients into: protons (only), photons (only), and combination (of fractions as protons and photons)
+# Exploratory: Create variable that splits patients into: protons (only), photons (only), and combination (of fractions as protons and photons)
 MergedData$TreatmentSplit <- ifelse(
   !is.na(MergedData$Fractions_proton) & !is.na(MergedData$Fractions_total),
   ifelse(MergedData$Fractions_proton == MergedData$Fractions_total, "Protons",
@@ -60,38 +60,6 @@ cat("\n")
 print(PatSummary)
 cat("\n")
 sink()
-
-# PROMs Data summary - expected vs actual
-
-ExpVsActual <- MergedData[, c("PatientID", "Date_StartRT", "Date_lastRT", "Periode", "Treatment30", "Survival_Status", "Survival_status.date")]
-ExpVsActual$Periode <- as.factor(ExpVsActual$Periode)
-
-ExpVsActual$Date_StartRT <- as.Date(ExpVsActual$Date_StartRT)
-target_date <- as.Date("2022-10-12")
-# Calculate the number of months between Date_StartRT and target_date
-ExpVsActual$Months_fromStartRT <- with(ExpVsActual, 
-                                   (as.numeric(format(target_date, "%Y")) - as.numeric(format(Date_StartRT, "%Y"))) * 12 +
-                                     (as.numeric(format(target_date, "%m")) - as.numeric(format(Date_StartRT, "%m")))
-)
-
-
-#sink(file = "MissingPROMs_summary.txt") #Save Missing PROMs summary
-#cat("\n")
-#print(MissingPROMs)
-#cat("\n")
-#sink()
-
-#sink(file = "Missing_PROMs_Proton_summary.txt") #Save Missing Proton PROMs summary
-#cat("\n")
-#print(MissingPROMs_Proton)
-#cat("\n")
-#sink()
-
-#sink(file = "Missing_PROMs_Photon_summary.txt") #Save Missing Photon PROMs summary
-#cat("\n")
-#print(MissingPROMs_Photon)
-#cat("\n")
-#sink()
 
 # Baseline utilities
 summary(MergedData[MergedData$Periode == 0,]$`EQ5DVAS`) #Summary EQVAS
@@ -151,8 +119,14 @@ view(dfSummary(ProtonPatSummary)) #Proton Patient Summary
 view(dfSummary(PhotonPatSummary)) #Photon Patient Summary
 view(FE_UniquePat_Summary) #Total Patient Summary
 
-summary(ProtonPatSummary) #Summary GHS
-summary(PhotonPatSummary$BaselineEQ5D) #Summary EQ5D index
+# Durvalumab only a treatment option for stage III NSCLC => number of patients with stage III NSCLC
+III_NSCLC_All    <- subset(UniquePat_FE_Variables, Stage == "III" & TumorCellType == "NSCLC") #Want to know % stage III NSCLC patients receiving durvalumab
+III_NSCLC_Proton <- subset(ProtonPatSummary,     Stage == "III" & TumorCellType == "NSCLC")
+III_NSCLC_Photon <- subset(PhotonPatSummary,     Stage == "III" & TumorCellType == "NSCLC")
+view(dfSummary(III_NSCLC_All   ["Durvalumab"])) 
+view(dfSummary(III_NSCLC_Proton["Durvalumab"]))
+view(dfSummary(III_NSCLC_Photon["Durvalumab"]))
+
 
 # Plot combination treatments vs proton and photon only against date of start of treatment
 UniquePat_FE_Variables$Date_StartRT <- as.Date(UniquePat_FE_Variables$Date_StartRT)
@@ -228,12 +202,12 @@ bxp_EQVAS <- ggplot(MergedData, aes(x = Periode, y = EQ5DVAS, fill = Treatment30
 figure12 <- ggarrange(bxp_EQindex, bxp_EQVAS, bxp_GHS,
                       labels = c("", "", ""),
                       ncol = 1, nrow = 3)
-figure12 #note warnings due to remove missing data
+figure12 #note warnings due to removal of missing data
 
 Abstract_bxp <- ggarrange(bxp_EQindex, bxp_GHS,
                           labels = c("", ""),
                           ncol = 1, nrow = 2)
-Abstract_bxp #note warnings due to remove missing data
+Abstract_bxp #note: warnings due to removal of missing data
 
 # HRQoL scores at each time point: 
 ## Overall
